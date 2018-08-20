@@ -163,45 +163,6 @@ func (s *State) Delete(db XODB) error {
 	return nil
 }
 
-// StatesByContextID retrieves a row from 'public.state' as a State.
-//
-// Generated from index 'state_context_id'.
-func StatesByContextID(db XODB, contextID string) ([]*State, error) {
-	var err error
-
-	// sql query
-	const sqlstr = `SELECT ` +
-		`"id", "context_id", "created_at", "state", "data", "event", "processing_error" ` +
-		`FROM public.state ` +
-		`WHERE "context_id" = $1`
-
-	// run query
-	XOLog(sqlstr, contextID)
-	q, err := db.Query(sqlstr, contextID)
-	if err != nil {
-		return nil, err
-	}
-	defer q.Close()
-
-	// load results
-	res := []*State{}
-	for q.Next() {
-		s := State{
-			_exists: true,
-		}
-
-		// scan
-		err = q.Scan(&s.ID, &s.ContextID, &s.CreatedAt, &s.State, &s.Data, &s.Event, &s.ProcessingError)
-		if err != nil {
-			return nil, err
-		}
-
-		res = append(res, &s)
-	}
-
-	return res, nil
-}
-
 // StateByID retrieves a row from 'public.state' as a State.
 //
 // Generated from index 'state_pkey'.
@@ -239,6 +200,24 @@ func LastState(db XODB, contextId string) (*State, error) {
 	XOLog(sqlstr, contextId)
 	var s State
 	err = db.QueryRow(sqlstr, contextId).Scan(&s.ID, &s.ContextID, &s.CreatedAt, &s.State, &s.Data, &s.Event, &s.ProcessingError)
+	if err != nil {
+		return nil, err
+	}
+
+	return &s, nil
+}
+
+// OldestInState runs a custom query, returning results as State.
+func OldestInState(db XODB, state int64) (*State, error) {
+	var err error
+
+	// sql query
+	const sqlstr = `SELECT * FROM state WHERE state = $1 ORDER BY created_at DESC LIMIT 1`
+
+	// run query
+	XOLog(sqlstr, state)
+	var s State
+	err = db.QueryRow(sqlstr, state).Scan(&s.ID, &s.ContextID, &s.CreatedAt, &s.State, &s.Data, &s.Event, &s.ProcessingError)
 	if err != nil {
 		return nil, err
 	}
