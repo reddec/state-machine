@@ -13,6 +13,6 @@ func MakeAMQPHandler(vm *machine.StateMachine) fluent.TransactionHandlerFunc {
 		if id == "" {
 			id = msg.MessageId
 		}
-		return vm.Emit(ctx, id, msg.Body)
+		return vm.Emit(context.WithValue(ctx, "message", msg), id, msg.Body)
 	}
 }
