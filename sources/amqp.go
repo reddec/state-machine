@@ -7,12 +7,14 @@ import (
 	"github.com/streadway/amqp"
 )
 
+const AMQPMessageKey = "message"
+
 func MakeAMQPHandler(vm *machine.StateMachine) fluent.TransactionHandlerFunc {
 	return func(ctx context.Context, msg amqp.Delivery) error {
 		id := msg.CorrelationId
 		if id == "" {
 			id = msg.MessageId
 		}
-		return vm.Emit(context.WithValue(ctx, "message", msg), id, msg.Body)
+		return vm.Emit(context.WithValue(ctx, AMQPMessageKey, msg), id, msg.Body)
 	}
 }
