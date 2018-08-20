@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/pkg/errors"
+	"io/ioutil"
+	"log"
 	"os"
 )
 
@@ -55,11 +57,16 @@ type StateStorage interface {
 	Last(id string) (*IncompleteStateContext, error)
 }
 
+type Logger interface {
+	Println(...interface{})
+}
+
 type StateMachine struct {
 	state          map[State]StateHandler
 	init           StateHandler
 	storage        StateStorage
 	defaultHandler StateHandler
+	logger         Logger
 }
 
 func New(storage StateStorage, init StateHandler) *StateMachine {
@@ -67,6 +74,7 @@ func New(storage StateStorage, init StateHandler) *StateMachine {
 		storage: storage,
 		state:   make(map[State]StateHandler),
 		init:    init,
+		logger:  log.New(ioutil.Discard, "", log.LstdFlags),
 	}
 }
 
@@ -81,6 +89,15 @@ func (st *StateMachine) Register(state State, handler StateHandler) *StateMachin
 	}
 	st.state[state] = handler
 	return st
+}
+
+func (st *StateMachine) WithLogger(logger Logger) *StateMachine {
+	st.logger = logger
+	return st
+}
+
+func (st *StateMachine) WithStdLog(prefix string) *StateMachine {
+	return st.WithLogger(log.New(os.Stderr, prefix, log.LstdFlags))
 }
 
 func (st *StateMachine) WithDefaultHandler(handler StateHandler) *StateMachine {

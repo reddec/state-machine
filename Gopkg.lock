@@ -2,6 +2,12 @@
 
 
 [[projects]]
+  name = "github.com/jessevdk/go-flags"
+  packages = ["."]
+  revision = "c6ca198ec95c841fdb89fc0de7496fed11ab854e"
+  version = "v1.4.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/jmoiron/sqlx"
   packages = [
@@ -40,6 +46,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "7bdbf77674707d3648bf24b693455bff917b546738bce1716f05f154404a0a5d"
+  inputs-digest = "f9d7e39c7d55ed69b1cdf8b36a40366a6ff943174d88c4be8eb82e504cedb8df"
   solver-name = "gps-cdcl"
   solver-version = 1

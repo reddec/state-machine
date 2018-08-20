@@ -1,0 +1,21 @@
+package {{.Package}}
+
+import (
+    "github.com/reddec/state-machine/machine"
+    "github.com/pkg/errors"
+    "context"
+)
+
+func (pr *{{.Type}}) initializeState(ctx context.Context, stateContext *machine.StateContext) (machine.State, error) {
+    return stateContext.Current, errors.New("initialization not yet implemented")
+}
+
+var handlers{{.Name}} []func(vm *machine.StateMachine, processor *{{.Type}})
+
+func {{.Name}}NewVM(storage machine.StateStorage, processor *{{.Type}}) *machine.StateMachine {
+    vm := machine.New(storage, processor.initializeState)
+    for _, handler := range handlers{{.Name}} {
+        handler(vm, processor)
+    }
+    return vm
+}

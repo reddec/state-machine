@@ -1,0 +1,21 @@
+package {{.Package}}
+
+import (
+    "github.com/reddec/state-machine/machine"
+    "github.com/pkg/errors"
+    "context"
+)
+
+const {{.Name}}{{.State}} machine.State = {{.Num}}
+
+func (pr *{{.Type}}) state{{.State}}(ctx context.Context, stateContext *machine.StateContext) (machine.State, error) {
+    // TODO: implement {{.State}}
+    return stateContext.Current, errors.New("{{.State}} handler not yet implemented")
+}
+
+
+func init() {
+    handlers{{.Name}} = append(handlers{{.Name}}, func(vm *machine.StateMachine, processor *{{.Type}}) {
+        vm.Register({{.Name}}{{.State}}, processor.state{{.State}})
+    })
+}
