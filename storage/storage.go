@@ -35,14 +35,11 @@ func (ms *DbStorage) NumNotInStates(state ...machine.State) (int64, error) {
 	}
 	var queryBase = `SELECT count(1) FROM "state" WHERE "state"."state" NOT IN (` + strings.Join(opts, ",") + `)`
 	var count int64
-	rs, err := ms.db.Query(queryBase, params...)
+	rs := ms.db.QueryRow(queryBase, params...)
+	err := rs.Scan(&count)
 	if err == sql.ErrNoRows {
 		return 0, nil
-	} else if err != nil {
-		return -1, err
 	}
-	defer rs.Close()
-	err = rs.Scan(&count)
 	return count, err
 }
 
