@@ -190,16 +190,16 @@ func StateByID(db XODB, id int64) (*State, error) {
 }
 
 // LastState runs a custom query, returning results as State.
-func LastState(db XODB, contextId string) (*State, error) {
+func LastState(db XODB, contextIdA string, contextIdB string) (*State, error) {
 	var err error
 
 	// sql query
-	const sqlstr = `SELECT * FROM state WHERE context_id = $1 ORDER BY created_at DESC LIMIT 1`
+	const sqlstr = `SELECT * FROM state WHERE context_id IN (SELECT context_id FROM alias WHERE alias = $1 UNION ALL SELECT $2) ORDER BY created_at DESC LIMIT 1`
 
 	// run query
-	XOLog(sqlstr, contextId)
+	XOLog(sqlstr, contextIdA, contextIdB)
 	var s State
-	err = db.QueryRow(sqlstr, contextId).Scan(&s.ID, &s.ContextID, &s.CreatedAt, &s.State, &s.Data, &s.Event, &s.ProcessingError)
+	err = db.QueryRow(sqlstr, contextIdA, contextIdB).Scan(&s.ID, &s.ContextID, &s.CreatedAt, &s.State, &s.Data, &s.Event, &s.ProcessingError)
 	if err != nil {
 		return nil, err
 	}

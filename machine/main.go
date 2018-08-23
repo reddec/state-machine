@@ -47,7 +47,8 @@ type IncompleteStateContext struct {
 
 type StateContext struct {
 	IncompleteStateContext
-	Event SmartData
+	Event   SmartData
+	Aliases []string // it's never filled from storage
 }
 
 type StateHandler func(ctx context.Context, state *StateContext) (State, error)
