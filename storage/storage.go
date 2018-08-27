@@ -17,7 +17,7 @@ type DbStorage struct {
 }
 
 func (ms *DbStorage) OldestContextIDInState(state machine.State) (string, error) {
-	st, err := OldestInState(ms.db, int64(state))
+	st, err := OldestInState(ms.db, int64(state), ms.namespace)
 	if err != nil {
 		return "", err
 	}
@@ -31,11 +31,12 @@ func (ms *DbStorage) NumNotInStates(state ...machine.State) (int64, error) {
 
 	var opts []string
 	var params []interface{}
+	params = append(params, ms.namespace)
 	for i, val := range state {
-		opts = append(opts, "$"+strconv.Itoa(i+1))
+		opts = append(opts, "$"+strconv.Itoa(i+2))
 		params = append(params, val)
 	}
-	var queryBase = `SELECT count(1) FROM "state" WHERE "state"."state" NOT IN (` + strings.Join(opts, ",") + `)`
+	var queryBase = `SELECT count(1) FROM "state" WHERE "namespace" = $1 "state"."state" NOT IN (` + strings.Join(opts, ",") + `)`
 	var count int64
 	rs := ms.db.QueryRow(queryBase, params...)
 	err := rs.Scan(&count)
@@ -47,8 +48,9 @@ func (ms *DbStorage) NumNotInStates(state ...machine.State) (int64, error) {
 
 func (ms *DbStorage) Alias(originalId string, alias string) error {
 	var item = Alias{
-		Alias:     ms.namespace + alias,
-		ContextID: ms.namespace + originalId,
+		Namespace: ms.namespace,
+		Alias:     alias,
+		ContextID: originalId,
 	}
 	return item.Insert(ms.db)
 }
@@ -65,10 +67,11 @@ func (ms *DbStorage) Append(ctx *machine.StateContext, state machine.State, e er
 	}
 
 	record := State{
+		Namespace:       ms.namespace,
 		State:           int(state),
 		Event:           ctx.Event,
 		Data:            ctx.Storage,
-		ContextID:       ms.namespace + ctx.ID,
+		ContextID:       ctx.ID,
 		CreatedAt:       time.Now(),
 		ProcessingError: str,
 	}
@@ -79,8 +82,9 @@ func (ms *DbStorage) Append(ctx *machine.StateContext, state machine.State, e er
 	}
 	for _, alias := range ctx.Aliases {
 		al := Alias{
-			Alias:     ms.namespace + alias,
-			ContextID: ms.namespace + ctx.ID,
+			Namespace: ms.namespace,
+			Alias:     alias,
+			ContextID: ctx.ID,
 		}
 		err = al.Insert(tx)
 		if err != nil {
@@ -92,15 +96,14 @@ func (ms *DbStorage) Append(ctx *machine.StateContext, state machine.State, e er
 }
 
 func (ms *DbStorage) Last(id string) (*machine.IncompleteStateContext, error) {
-	id = ms.namespace + id
-	item, err := LastState(ms.db, id, id)
+	item, err := LastState(ms.db, ms.namespace, id, ms.namespace, id)
 	if err == sql.ErrNoRows {
 		return nil, os.ErrNotExist
 	} else if err != nil {
 		return nil, err
 	}
 	return &machine.IncompleteStateContext{
-		ID:      item.ContextID[len(ms.namespace):],
+		ID:      item.ContextID,
 		Storage: item.Data,
 		Current: machine.State(item.State),
 	}, nil

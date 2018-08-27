@@ -12,6 +12,7 @@ import (
 // State represents a row from 'public.state'.
 type State struct {
 	ID              int64          `json:"id"`               // id
+	Namespace       string         `json:"namespace"`        // namespace
 	ContextID       string         `json:"context_id"`       // context_id
 	CreatedAt       time.Time      `json:"created_at"`       // created_at
 	State           int            `json:"state"`            // state
@@ -44,14 +45,14 @@ func (s *State) Insert(db XODB) error {
 
 	// sql insert query, primary key provided by sequence
 	const sqlstr = `INSERT INTO public.state (` +
-		`"context_id", "created_at", "state", "data", "event", "processing_error"` +
+		`"namespace", "context_id", "created_at", "state", "data", "event", "processing_error"` +
 		`) VALUES (` +
-		`$1, $2, $3, $4, $5, $6` +
+		`$1, $2, $3, $4, $5, $6, $7` +
 		`) RETURNING "id"`
 
 	// run query
-	XOLog(sqlstr, s.ContextID, s.CreatedAt, s.State, s.Data, s.Event, s.ProcessingError)
-	err = db.QueryRow(sqlstr, s.ContextID, s.CreatedAt, s.State, s.Data, s.Event, s.ProcessingError).Scan(&s.ID)
+	XOLog(sqlstr, s.Namespace, s.ContextID, s.CreatedAt, s.State, s.Data, s.Event, s.ProcessingError)
+	err = db.QueryRow(sqlstr, s.Namespace, s.ContextID, s.CreatedAt, s.State, s.Data, s.Event, s.ProcessingError).Scan(&s.ID)
 	if err != nil {
 		return err
 	}
@@ -78,14 +79,14 @@ func (s *State) Update(db XODB) error {
 
 	// sql query
 	const sqlstr = `UPDATE public.state SET (` +
-		`"context_id", "created_at", "state", "data", "event", "processing_error"` +
+		`"namespace", "context_id", "created_at", "state", "data", "event", "processing_error"` +
 		`) = ( ` +
-		`$1, $2, $3, $4, $5, $6` +
-		`) WHERE "id" = $7`
+		`$1, $2, $3, $4, $5, $6, $7` +
+		`) WHERE "id" = $8`
 
 	// run query
-	XOLog(sqlstr, s.ContextID, s.CreatedAt, s.State, s.Data, s.Event, s.ProcessingError, s.ID)
-	_, err = db.Exec(sqlstr, s.ContextID, s.CreatedAt, s.State, s.Data, s.Event, s.ProcessingError, s.ID)
+	XOLog(sqlstr, s.Namespace, s.ContextID, s.CreatedAt, s.State, s.Data, s.Event, s.ProcessingError, s.ID)
+	_, err = db.Exec(sqlstr, s.Namespace, s.ContextID, s.CreatedAt, s.State, s.Data, s.Event, s.ProcessingError, s.ID)
 	return err
 }
 
@@ -111,18 +112,18 @@ func (s *State) Upsert(db XODB) error {
 
 	// sql query
 	const sqlstr = `INSERT INTO public.state (` +
-		`"id", "context_id", "created_at", "state", "data", "event", "processing_error"` +
+		`"id", "namespace", "context_id", "created_at", "state", "data", "event", "processing_error"` +
 		`) VALUES (` +
-		`$1, $2, $3, $4, $5, $6, $7` +
+		`$1, $2, $3, $4, $5, $6, $7, $8` +
 		`) ON CONFLICT ("id") DO UPDATE SET (` +
-		`"id", "context_id", "created_at", "state", "data", "event", "processing_error"` +
+		`"id", "namespace", "context_id", "created_at", "state", "data", "event", "processing_error"` +
 		`) = (` +
-		`EXCLUDED."id", EXCLUDED."context_id", EXCLUDED."created_at", EXCLUDED."state", EXCLUDED."data", EXCLUDED."event", EXCLUDED."processing_error"` +
+		`EXCLUDED."id", EXCLUDED."namespace", EXCLUDED."context_id", EXCLUDED."created_at", EXCLUDED."state", EXCLUDED."data", EXCLUDED."event", EXCLUDED."processing_error"` +
 		`)`
 
 	// run query
-	XOLog(sqlstr, s.ID, s.ContextID, s.CreatedAt, s.State, s.Data, s.Event, s.ProcessingError)
-	_, err = db.Exec(sqlstr, s.ID, s.ContextID, s.CreatedAt, s.State, s.Data, s.Event, s.ProcessingError)
+	XOLog(sqlstr, s.ID, s.Namespace, s.ContextID, s.CreatedAt, s.State, s.Data, s.Event, s.ProcessingError)
+	_, err = db.Exec(sqlstr, s.ID, s.Namespace, s.ContextID, s.CreatedAt, s.State, s.Data, s.Event, s.ProcessingError)
 	if err != nil {
 		return err
 	}
@@ -171,7 +172,7 @@ func StateByID(db XODB, id int64) (*State, error) {
 
 	// sql query
 	const sqlstr = `SELECT ` +
-		`"id", "context_id", "created_at", "state", "data", "event", "processing_error" ` +
+		`"id", "namespace", "context_id", "created_at", "state", "data", "event", "processing_error" ` +
 		`FROM public.state ` +
 		`WHERE "id" = $1`
 
@@ -181,7 +182,7 @@ func StateByID(db XODB, id int64) (*State, error) {
 		_exists: true,
 	}
 
-	err = db.QueryRow(sqlstr, id).Scan(&s.ID, &s.ContextID, &s.CreatedAt, &s.State, &s.Data, &s.Event, &s.ProcessingError)
+	err = db.QueryRow(sqlstr, id).Scan(&s.ID, &s.Namespace, &s.ContextID, &s.CreatedAt, &s.State, &s.Data, &s.Event, &s.ProcessingError)
 	if err != nil {
 		return nil, err
 	}
@@ -190,16 +191,16 @@ func StateByID(db XODB, id int64) (*State, error) {
 }
 
 // LastState runs a custom query, returning results as State.
-func LastState(db XODB, contextIdA string, contextIdB string) (*State, error) {
+func LastState(db XODB, namespaceA string, contextIdA string, namespaceB string, contextIdB string) (*State, error) {
 	var err error
 
 	// sql query
-	const sqlstr = `SELECT * FROM state WHERE context_id IN (SELECT context_id FROM alias WHERE alias = $1 UNION ALL SELECT $2) ORDER BY created_at DESC LIMIT 1`
+	const sqlstr = `SELECT * FROM state WHERE namespace = $1 AND context_id IN (SELECT context_id FROM alias WHERE alias = $2  AND namespace = $3 UNION ALL SELECT $4) ORDER BY created_at DESC LIMIT 1`
 
 	// run query
-	XOLog(sqlstr, contextIdA, contextIdB)
+	XOLog(sqlstr, namespaceA, contextIdA, namespaceB, contextIdB)
 	var s State
-	err = db.QueryRow(sqlstr, contextIdA, contextIdB).Scan(&s.ID, &s.ContextID, &s.CreatedAt, &s.State, &s.Data, &s.Event, &s.ProcessingError)
+	err = db.QueryRow(sqlstr, namespaceA, contextIdA, namespaceB, contextIdB).Scan(&s.ID, &s.Namespace, &s.ContextID, &s.CreatedAt, &s.State, &s.Data, &s.Event, &s.ProcessingError)
 	if err != nil {
 		return nil, err
 	}
@@ -208,16 +209,16 @@ func LastState(db XODB, contextIdA string, contextIdB string) (*State, error) {
 }
 
 // OldestInState runs a custom query, returning results as State.
-func OldestInState(db XODB, state int64) (*State, error) {
+func OldestInState(db XODB, state int64, namespaceA string) (*State, error) {
 	var err error
 
 	// sql query
-	const sqlstr = `SELECT * FROM state WHERE state = $1 ORDER BY created_at DESC LIMIT 1`
+	const sqlstr = `SELECT * FROM state WHERE state = $1 AND namespace = $2 ORDER BY created_at DESC LIMIT 1`
 
 	// run query
-	XOLog(sqlstr, state)
+	XOLog(sqlstr, state, namespaceA)
 	var s State
-	err = db.QueryRow(sqlstr, state).Scan(&s.ID, &s.ContextID, &s.CreatedAt, &s.State, &s.Data, &s.Event, &s.ProcessingError)
+	err = db.QueryRow(sqlstr, state, namespaceA).Scan(&s.ID, &s.Namespace, &s.ContextID, &s.CreatedAt, &s.State, &s.Data, &s.Event, &s.ProcessingError)
 	if err != nil {
 		return nil, err
 	}

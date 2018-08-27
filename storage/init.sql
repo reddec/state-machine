@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS state (
   id               BIGSERIAL                NOT NULL PRIMARY KEY,
+  namespace        TEXT                     NOT NULL,
   context_id       TEXT                     NOT NULL,
   created_at       TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT current_timestamp,
   state            INT                      NOT NULL,
@@ -10,8 +11,10 @@ CREATE TABLE IF NOT EXISTS state (
 
 CREATE TABLE IF NOT EXISTS alias (
   id         BIGSERIAL NOT NULL PRIMARY KEY,
+  namespace  TEXT      NOT NULL,
   context_id TEXT      NOT NULL,
-  alias      TEXT      NOT NULL UNIQUE
+  alias      TEXT      NOT NULL,
+  UNIQUE (alias, namespace)
 );
 
 CREATE INDEX IF NOT EXISTS state_context_id

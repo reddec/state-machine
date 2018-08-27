@@ -60,23 +60,3 @@ func TestEvent(t *testing.T) {
 		t.Error("alias not working")
 	}
 }
-func TestEvent(t *testing.T) {
-	conn, err := sqlx.Connect("postgres", "host=localhost user=postgres password=postgres sslmode=disable")
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	defer conn.Close()
-	stor, err := storage.NewDbStorage(conn)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	vm := machine.New(stor, func(ctx context.Context, state *machine.StateContext) (machine.State, error) {
-		fmt.Println("hell 1", state.ID)
-		return 1, nil
-	})
-
-	vm := machine.New()
-
-}

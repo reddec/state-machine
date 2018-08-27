@@ -10,6 +10,7 @@ import (
 // Alias represents a row from 'public.alias'.
 type Alias struct {
 	ID        int64  `json:"id"`         // id
+	Namespace string `json:"namespace"`  // namespace
 	ContextID string `json:"context_id"` // context_id
 	Alias     string `json:"alias"`      // alias
 
@@ -38,14 +39,14 @@ func (a *Alias) Insert(db XODB) error {
 
 	// sql insert query, primary key provided by sequence
 	const sqlstr = `INSERT INTO public.alias (` +
-		`"context_id", "alias"` +
+		`"namespace", "context_id", "alias"` +
 		`) VALUES (` +
-		`$1, $2` +
+		`$1, $2, $3` +
 		`) RETURNING "id"`
 
 	// run query
-	XOLog(sqlstr, a.ContextID, a.Alias)
-	err = db.QueryRow(sqlstr, a.ContextID, a.Alias).Scan(&a.ID)
+	XOLog(sqlstr, a.Namespace, a.ContextID, a.Alias)
+	err = db.QueryRow(sqlstr, a.Namespace, a.ContextID, a.Alias).Scan(&a.ID)
 	if err != nil {
 		return err
 	}
@@ -72,14 +73,14 @@ func (a *Alias) Update(db XODB) error {
 
 	// sql query
 	const sqlstr = `UPDATE public.alias SET (` +
-		`"context_id", "alias"` +
+		`"namespace", "context_id", "alias"` +
 		`) = ( ` +
-		`$1, $2` +
-		`) WHERE "id" = $3`
+		`$1, $2, $3` +
+		`) WHERE "id" = $4`
 
 	// run query
-	XOLog(sqlstr, a.ContextID, a.Alias, a.ID)
-	_, err = db.Exec(sqlstr, a.ContextID, a.Alias, a.ID)
+	XOLog(sqlstr, a.Namespace, a.ContextID, a.Alias, a.ID)
+	_, err = db.Exec(sqlstr, a.Namespace, a.ContextID, a.Alias, a.ID)
 	return err
 }
 
@@ -105,18 +106,18 @@ func (a *Alias) Upsert(db XODB) error {
 
 	// sql query
 	const sqlstr = `INSERT INTO public.alias (` +
-		`"id", "context_id", "alias"` +
+		`"id", "namespace", "context_id", "alias"` +
 		`) VALUES (` +
-		`$1, $2, $3` +
+		`$1, $2, $3, $4` +
 		`) ON CONFLICT ("id") DO UPDATE SET (` +
-		`"id", "context_id", "alias"` +
+		`"id", "namespace", "context_id", "alias"` +
 		`) = (` +
-		`EXCLUDED."id", EXCLUDED."context_id", EXCLUDED."alias"` +
+		`EXCLUDED."id", EXCLUDED."namespace", EXCLUDED."context_id", EXCLUDED."alias"` +
 		`)`
 
 	// run query
-	XOLog(sqlstr, a.ID, a.ContextID, a.Alias)
-	_, err = db.Exec(sqlstr, a.ID, a.ContextID, a.Alias)
+	XOLog(sqlstr, a.ID, a.Namespace, a.ContextID, a.Alias)
+	_, err = db.Exec(sqlstr, a.ID, a.Namespace, a.ContextID, a.Alias)
 	if err != nil {
 		return err
 	}
@@ -157,25 +158,25 @@ func (a *Alias) Delete(db XODB) error {
 	return nil
 }
 
-// AliasByAlias retrieves a row from 'public.alias' as a Alias.
+// AliasByAliasNamespace retrieves a row from 'public.alias' as a Alias.
 //
-// Generated from index 'alias_alias_key'.
-func AliasByAlias(db XODB, alias string) (*Alias, error) {
+// Generated from index 'alias_alias_namespace_key'.
+func AliasByAliasNamespace(db XODB, alias string, namespace string) (*Alias, error) {
 	var err error
 
 	// sql query
 	const sqlstr = `SELECT ` +
-		`"id", "context_id", "alias" ` +
+		`"id", "namespace", "context_id", "alias" ` +
 		`FROM public.alias ` +
-		`WHERE "alias" = $1`
+		`WHERE "alias" = $1 AND "namespace" = $2`
 
 	// run query
-	XOLog(sqlstr, alias)
+	XOLog(sqlstr, alias, namespace)
 	a := Alias{
 		_exists: true,
 	}
 
-	err = db.QueryRow(sqlstr, alias).Scan(&a.ID, &a.ContextID, &a.Alias)
+	err = db.QueryRow(sqlstr, alias, namespace).Scan(&a.ID, &a.Namespace, &a.ContextID, &a.Alias)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +192,7 @@ func AliasByID(db XODB, id int64) (*Alias, error) {
 
 	// sql query
 	const sqlstr = `SELECT ` +
-		`"id", "context_id", "alias" ` +
+		`"id", "namespace", "context_id", "alias" ` +
 		`FROM public.alias ` +
 		`WHERE "id" = $1`
 
@@ -201,7 +202,7 @@ func AliasByID(db XODB, id int64) (*Alias, error) {
 		_exists: true,
 	}
 
-	err = db.QueryRow(sqlstr, id).Scan(&a.ID, &a.ContextID, &a.Alias)
+	err = db.QueryRow(sqlstr, id).Scan(&a.ID, &a.Namespace, &a.ContextID, &a.Alias)
 	if err != nil {
 		return nil, err
 	}
