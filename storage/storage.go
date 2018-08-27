@@ -12,7 +12,8 @@ import (
 )
 
 type DbStorage struct {
-	db *sqlx.DB
+	db        *sqlx.DB
+	namespace string
 }
 
 func (ms *DbStorage) OldestContextIDInState(state machine.State) (string, error) {
@@ -46,8 +47,8 @@ func (ms *DbStorage) NumNotInStates(state ...machine.State) (int64, error) {
 
 func (ms *DbStorage) Alias(originalId string, alias string) error {
 	var item = Alias{
-		Alias:     alias,
-		ContextID: originalId,
+		Alias:     ms.namespace + alias,
+		ContextID: ms.namespace + originalId,
 	}
 	return item.Insert(ms.db)
 }
@@ -67,7 +68,7 @@ func (ms *DbStorage) Append(ctx *machine.StateContext, state machine.State, e er
 		State:           int(state),
 		Event:           ctx.Event,
 		Data:            ctx.Storage,
-		ContextID:       ctx.ID,
+		ContextID:       ms.namespace + ctx.ID,
 		CreatedAt:       time.Now(),
 		ProcessingError: str,
 	}
@@ -78,8 +79,8 @@ func (ms *DbStorage) Append(ctx *machine.StateContext, state machine.State, e er
 	}
 	for _, alias := range ctx.Aliases {
 		al := Alias{
-			Alias:     alias,
-			ContextID: ctx.ID,
+			Alias:     ms.namespace + alias,
+			ContextID: ms.namespace + ctx.ID,
 		}
 		err = al.Insert(tx)
 		if err != nil {
@@ -91,6 +92,7 @@ func (ms *DbStorage) Append(ctx *machine.StateContext, state machine.State, e er
 }
 
 func (ms *DbStorage) Last(id string) (*machine.IncompleteStateContext, error) {
+	id = ms.namespace + id
 	item, err := LastState(ms.db, id, id)
 	if err == sql.ErrNoRows {
 		return nil, os.ErrNotExist
@@ -98,12 +100,16 @@ func (ms *DbStorage) Last(id string) (*machine.IncompleteStateContext, error) {
 		return nil, err
 	}
 	return &machine.IncompleteStateContext{
-		ID:      item.ContextID,
+		ID:      item.ContextID[len(ms.namespace):],
 		Storage: item.Data,
 		Current: machine.State(item.State),
 	}, nil
 }
-
+func (ms *DbStorage) WithNS(namespace string) *DbStorage {
+	db := *ms
+	db.namespace = namespace
+	return &db
+}
 func NewDbStorage(db *sqlx.DB) (*DbStorage, error) {
 	_, err := db.Exec(string(MustAsset("init.sql")))
 	if err != nil {
