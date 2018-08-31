@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"time"
 )
 
 type State int
@@ -111,6 +112,20 @@ func (st *StateMachine) EmitString(ctx context.Context, contextID string, event 
 }
 
 func (st *StateMachine) Emit(ctx context.Context, contextID string, event []byte) error {
+	st.logger.Println("signal for", contextID)
+	begin := time.Now()
+	err := st.emit(ctx, contextID, event)
+	end := time.Now()
+	delta := end.Sub(begin)
+	if err != nil {
+		st.logger.Println(contextID, "{ took", delta, "}", "failed to process:", err)
+	} else {
+		st.logger.Println(contextID, "{ took", delta, "}", "success", contextID)
+	}
+	return err
+}
+
+func (st *StateMachine) emit(ctx context.Context, contextID string, event []byte) error {
 	prevStateContext, err := st.storage.Last(contextID)
 
 	var stateHandler StateHandler
@@ -132,7 +147,7 @@ func (st *StateMachine) Emit(ctx context.Context, contextID string, event []byte
 	}
 
 	stateContext := &StateContext{
-		Event: event,
+		Event:                  event,
 		IncompleteStateContext: *prevStateContext,
 	}
 
