@@ -152,12 +152,11 @@ func (st *StateMachine) emit(ctx context.Context, contextID string, event []byte
 	}
 
 	nextState, err := stateHandler(ctx, stateContext)
+	stateErr := err
+
 	err = st.storage.Append(stateContext, nextState, err)
 	if err != nil {
 		return errors.Wrapf(err, "state-machine: %v -> %v: save state context", stateContext.Current, nextState)
 	}
-	if err != nil {
-		return errors.Wrapf(err, "state-machine: process handle for state '%v'", stateContext.Current)
-	}
-	return nil
+	return errors.Wrapf(stateErr, "state-machine: process handle for state '%v'", stateContext.Current)
 }
